@@ -1,27 +1,33 @@
+# ── Build stage ───────────────────────────────────────────────────────────────
 FROM node:20-alpine AS base
 WORKDIR /app
 
-# Install deps
-COPY package.json ./
+# Copy manifests first for layer caching
+COPY package.json package-lock.json ./
 COPY client/package.json ./client/
 COPY server/package.json ./server/
-RUN npm install
+
+RUN npm ci
 
 # Build client
 COPY client ./client
 RUN npm run build --workspace=client
 
-# Build server
+# Build server (transpile TS → JS)
 COPY server ./server
-RUN npm run build --workspace=server
+RUN cd server && npx tsc
 
-# Production image
+# ── Production image ──────────────────────────────────────────────────────────
 FROM node:20-alpine AS prod
 WORKDIR /app
+
+# Only copy what's needed to run
 COPY --from=base /app/server/dist ./server/dist
 COPY --from=base /app/client/dist ./client/dist
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/server/node_modules ./server/node_modules
+
+# Install only server production deps
+COPY server/package.json ./server/
+RUN cd server && npm install --omit=dev
 
 ENV NODE_ENV=production
 ENV PORT=3001

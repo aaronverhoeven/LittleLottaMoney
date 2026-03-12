@@ -6,3 +6,4 @@ dist/
 *.sqlite
 data/
 .DS_Store
+server/dist/

@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: 0 0% 99%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+    --border: 220 13% 91%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --sidebar-bg: 222 47% 9%;
+    --sidebar-fg: 215 20% 68%;
+    --sidebar-active: 160 84% 39%;
+    --positive: 160 84% 39%;
+    --negative: 0 72% 51%;
+    --warning: 38 92% 50%;
+  }
+
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 96%;
+    --card: 222 47% 10%;
+    --card-foreground: 210 40% 96%;
+    --muted: 222 47% 14%;
+    --muted-foreground: 215 20% 55%;
+    --border: 222 47% 15%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --sidebar-bg: 222 47% 5%;
+    --sidebar-fg: 215 20% 60%;
+    --sidebar-active: 160 84% 39%;
+    --positive: 160 84% 39%;
+    --negative: 0 72% 55%;
+    --warning: 38 92% 50%;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    min-height: 100vh;
+    display: flex;
+  }
+}

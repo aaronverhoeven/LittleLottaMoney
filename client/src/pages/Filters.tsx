@@ -2,11 +2,31 @@ import { useState } from 'react'
 import { Plus, CheckCircle, XCircle, Sparkles, Tag, ChevronRight, Zap } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { filterRules, suggestedRules } from '@/lib/mock-data'
+import { useApi } from '@/hooks/useApi'
+import { api } from '@/lib/api'
 
 export function Filters() {
-  const [accepted, setAccepted] = useState<Set<string>>(new Set())
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [accepted, setAccepted] = useState<Set<number>>(new Set())
+  const [dismissed, setDismissed] = useState<Set<number>>(new Set())
+
+  const { data: filtersData } = useApi(() => api.filters.list())
+  const { data: suggestionsData } = useApi(() => api.filters.suggestions())
+
+  const rules: any[] = filtersData?.rules ?? []
+  const suggestions: any[] = suggestionsData?.suggestions ?? []
+
+  const visibleSuggestions = suggestions.filter((s: any) => !dismissed.has(s.id))
+  const pendingSuggestions = visibleSuggestions.filter((s: any) => !accepted.has(s.id))
+  const totalTransactions = suggestions.reduce((sum: number, s: any) => sum + (s.transactions ?? 0), 0)
+
+  async function handleAccept(suggestion: any) {
+    await api.filters.create({
+      name: suggestion.suggestion,
+      pattern: suggestion.pattern,
+      matchType: 'regex',
+    })
+    setAccepted((a) => new Set([...a, suggestion.id]))
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-5xl">
@@ -15,15 +35,15 @@ export function Filters() {
         <div className="flex items-center gap-2 mb-3">
           <Sparkles size={14} style={{ color: 'hsl(var(--primary))' }} />
           <h2 className="text-sm font-semibold">Suggested Rules</h2>
-          <Badge variant="success">{suggestedRules.filter((s) => !dismissed.has(s.id) && !accepted.has(s.id)).length} new</Badge>
+          <Badge variant="success">{pendingSuggestions.length} new</Badge>
         </div>
         <p className="text-xs mb-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
           Based on your recent transactions, these rules would auto-classify{' '}
-          <strong>{suggestedRules.reduce((s, r) => s + r.transactions, 0)}</strong> transactions.
+          <strong>{totalTransactions}</strong> transactions.
         </p>
         <div className="space-y-3">
-          {suggestedRules.filter((s) => !dismissed.has(s.id)).map((rule) => (
-            <Card key={rule.id} className={accepted.has(rule.id) ? 'opacity-60' : ''}>
+          {visibleSuggestions.map((suggestion: any) => (
+            <Card key={suggestion.id} className={accepted.has(suggestion.id) ? 'opacity-60' : ''}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -31,26 +51,26 @@ export function Filters() {
                     <Zap size={14} style={{ color: 'hsl(var(--primary))' }} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium">{rule.suggestion}</p>
+                    <p className="text-sm font-medium">{suggestion.suggestion}</p>
                     <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                      {rule.transactions} transactions · {Math.round(rule.confidence * 100)}% confidence
+                      {suggestion.transactions} transactions · {Math.round((suggestion.confidence ?? 0) * 100)}% confidence
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-4">
-                  {accepted.has(rule.id) ? (
+                  {accepted.has(suggestion.id) ? (
                     <Badge variant="success">Accepted</Badge>
                   ) : (
                     <>
                       <button
-                        onClick={() => setDismissed((d) => new Set([...d, rule.id]))}
+                        onClick={() => setDismissed((d) => new Set([...d, suggestion.id]))}
                         className="p-1.5 rounded-lg transition-all hover:bg-red-50"
                         title="Dismiss"
                       >
                         <XCircle size={18} style={{ color: 'hsl(var(--negative))' }} />
                       </button>
                       <button
-                        onClick={() => setAccepted((a) => new Set([...a, rule.id]))}
+                        onClick={() => handleAccept(suggestion)}
                         className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all"
                         style={{ backgroundColor: 'hsl(var(--primary))', color: 'white' }}
                       >
@@ -63,7 +83,7 @@ export function Filters() {
               </div>
             </Card>
           ))}
-          {suggestedRules.every((s) => dismissed.has(s.id)) && (
+          {visibleSuggestions.length === 0 && (
             <div className="text-center py-6" style={{ color: 'hsl(var(--muted-foreground))' }}>
               <p className="text-sm">All suggestions reviewed. Check back after new transactions.</p>
             </div>
@@ -86,11 +106,11 @@ export function Filters() {
 
         <Card>
           <div className="space-y-0">
-            {filterRules.map((rule, i) => (
+            {rules.map((rule: any, i: number) => (
               <div
                 key={rule.id}
                 className="flex items-center justify-between py-3 text-sm group cursor-pointer"
-                style={{ borderBottom: i < filterRules.length - 1 ? '1px solid hsl(var(--border))' : 'none' }}
+                style={{ borderBottom: i < rules.length - 1 ? '1px solid hsl(var(--border))' : 'none' }}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -108,17 +128,17 @@ export function Filters() {
                         {rule.pattern}
                       </code>
                       <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                        → {rule.category}
+                        → {rule.categoryName}
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0 ml-4">
                   <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    {rule.matched} matches
+                    {rule.matchedCount ?? 0} matches
                   </span>
-                  <Badge variant={rule.active ? 'success' : 'neutral'}>
-                    {rule.active ? 'Active' : 'Paused'}
+                  <Badge variant={rule.isActive ? 'success' : 'neutral'}>
+                    {rule.isActive ? 'Active' : 'Paused'}
                   </Badge>
                   <ChevronRight size={14} style={{ color: 'hsl(var(--muted-foreground))' }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity" />

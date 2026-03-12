@@ -3,15 +3,27 @@ import { Plus, Target, Droplets } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
-import { budgetBuckets, goals, slushFund, summaryStats } from '@/lib/mock-data'
+import { useApi } from '@/hooks/useApi'
+import { api } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 
 export function Budget() {
   const [activeTab, setActiveTab] = useState<'envelopes' | 'goals'>('envelopes')
 
-  const totalAllocated = budgetBuckets.reduce((s, b) => s + b.allocated, 0)
-  const totalSpent = budgetBuckets.reduce((s, b) => s + b.spent, 0)
-  const unallocated = summaryStats.monthlyIncome - totalAllocated
+  const { data: budgetData } = useApi(() => api.budget.get())
+  const { data: goalsData } = useApi(() => api.goals.list())
+
+  const budgetBuckets: any[] = budgetData?.buckets ?? []
+  const income: number = budgetData?.income ?? 0
+  const allocated: number = budgetData?.allocated ?? 0
+  const spent: number = budgetData?.spent ?? 0
+  const slush: number = budgetData?.slush ?? 0
+
+  const goals: any[] = goalsData?.goals ?? []
+
+  const totalAllocated = allocated || budgetBuckets.reduce((s: number, b: any) => s + b.allocated, 0)
+  const totalSpent = spent || budgetBuckets.reduce((s: number, b: any) => s + b.spent, 0)
+  const unallocated = income - totalAllocated
 
   return (
     <div className="p-6 space-y-6 max-w-7xl">
@@ -25,7 +37,7 @@ export function Budget() {
             <div className="space-y-3">
               <div className="flex justify-between text-xs">
                 <span style={{ color: 'hsl(var(--muted-foreground))' }}>Income</span>
-                <span className="font-semibold">{formatCurrency(summaryStats.monthlyIncome)}</span>
+                <span className="font-semibold">{formatCurrency(income)}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span style={{ color: 'hsl(var(--muted-foreground))' }}>Allocated</span>
@@ -39,12 +51,12 @@ export function Budget() {
                 <div className="flex justify-between text-xs mb-2">
                   <span className="font-medium">Slush Fund</span>
                   <span className="font-bold" style={{ color: 'hsl(var(--primary))' }}>
-                    {formatCurrency(slushFund.available)}
+                    {formatCurrency(slush)}
                   </span>
                 </div>
                 <ProgressBar
                   value={totalAllocated}
-                  max={summaryStats.monthlyIncome}
+                  max={income}
                   size="md"
                 />
                 <p className="text-xs mt-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
@@ -71,12 +83,12 @@ export function Budget() {
                   <div>
                     <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Available</p>
                     <p className="text-xl font-bold mt-0.5" style={{ color: 'hsl(var(--primary))' }}>
-                      {formatCurrency(slushFund.available)}
+                      {formatCurrency(slush)}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Monthly income</p>
-                    <p className="text-xl font-bold mt-0.5">{formatCurrency(slushFund.total)}</p>
+                    <p className="text-xl font-bold mt-0.5">{formatCurrency(income)}</p>
                   </div>
                 </div>
               </div>
@@ -114,8 +126,8 @@ export function Budget() {
             </button>
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-            {budgetBuckets.map((bucket) => {
-              const pct = Math.round((bucket.spent / bucket.allocated) * 100)
+            {budgetBuckets.map((bucket: any) => {
+              const pct = bucket.allocated > 0 ? Math.round((bucket.spent / bucket.allocated) * 100) : 0
               const remaining = bucket.allocated - bucket.spent
               const isOver = bucket.spent > bucket.allocated
 
@@ -163,10 +175,10 @@ export function Budget() {
             </button>
           </div>
           <div className="space-y-4">
-            {goals.map((goal) => {
-              const pct = Math.round((goal.saved / goal.target) * 100)
-              const remaining = goal.target - goal.saved
-              const monthsLeft = Math.ceil(remaining / goal.monthly)
+            {goals.map((goal: any) => {
+              const pct = goal.percentDone ?? (goal.targetAmount > 0 ? Math.round((goal.currentAmount / goal.targetAmount) * 100) : 0)
+              const remaining = goal.targetAmount - goal.currentAmount
+              const monthsLeft = goal.monthsLeft ?? (goal.monthlyContribution > 0 ? Math.ceil(remaining / goal.monthlyContribution) : 0)
 
               return (
                 <Card key={goal.id}>
@@ -174,21 +186,23 @@ export function Budget() {
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                         style={{ backgroundColor: 'hsl(var(--muted))' }}>
-                        <Target size={16} style={{ color: 'hsl(var(--primary))' }} />
+                        {goal.emoji
+                          ? <span className="text-lg">{goal.emoji}</span>
+                          : <Target size={16} style={{ color: 'hsl(var(--primary))' }} />}
                       </div>
                       <div>
                         <p className="text-sm font-semibold">{goal.name}</p>
                         <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                          {formatCurrency(goal.monthly)}/mo · ~{monthsLeft} months to go
+                          {formatCurrency(goal.monthlyContribution)}/mo · ~{monthsLeft} months to go
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold">{formatCurrency(goal.saved)}</p>
-                      <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>of {formatCurrency(goal.target)}</p>
+                      <p className="text-sm font-bold">{formatCurrency(goal.currentAmount)}</p>
+                      <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>of {formatCurrency(goal.targetAmount)}</p>
                     </div>
                   </div>
-                  <ProgressBar value={goal.saved} max={goal.target} size="md" />
+                  <ProgressBar value={goal.currentAmount} max={goal.targetAmount} size="md" />
                   <div className="flex items-center justify-between mt-2">
                     <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
                       {pct}% saved

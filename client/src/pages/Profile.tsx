@@ -1,13 +1,24 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Save, Sun, Moon, User, Briefcase, MapPin, DollarSign } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
-import { userProfile } from '@/lib/mock-data'
+import { useApi } from '@/hooks/useApi'
+import { api } from '@/lib/api'
+
+const defaultProfile = {
+  name: '', age: 0, location: '', occupation: '', employer: '', annualSalary: 0, currency: 'USD',
+}
 
 export function Profile({ darkMode, onToggleDark }: { darkMode: boolean; onToggleDark: () => void }) {
-  const [profile, setProfile] = useState(userProfile)
-  const [saved, setSaved] = useState(false)
+  const { data } = useApi(() => api.profile.get())
+  const [profile, setProfile] = useState(defaultProfile)
+  const [saved, setSaved]     = useState(false)
 
-  const handleSave = () => {
+  useEffect(() => {
+    if (data?.profile) setProfile({ ...defaultProfile, ...data.profile })
+  }, [data])
+
+  const handleSave = async () => {
+    await api.profile.update(profile)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }

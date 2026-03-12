@@ -6,22 +6,44 @@ import {
 import { AlertCircle } from 'lucide-react'
 import { Card, StatCard } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { monthlyIncome, netWorthHistory } from '@/lib/mock-data'
+import { useApi } from '@/hooks/useApi'
+import { api } from '@/lib/api'
 import { formatCurrency, formatPercent } from '@/lib/utils'
 
 export function Income() {
   const [filterOutliers, setFilterOutliers] = useState(false)
 
-  const filtered = filterOutliers ? monthlyIncome.filter((m) => !m.isOutlier) : monthlyIncome
-  const avg = Math.round(filtered.reduce((s, m) => s + m.amount, 0) / filtered.length)
-  const avgAll = Math.round(monthlyIncome.reduce((s, m) => s + m.amount, 0) / monthlyIncome.length)
-  const outlierCount = monthlyIncome.filter((m) => m.isOutlier).length
+  const { data: incomeData } = useApi(() => api.income.get())
+  const { data: netWorthData } = useApi(() => api.income.netWorthHistory())
 
-  const chartData = monthlyIncome.map((m) => ({
-    ...m,
-    fill: m.isOutlier ? 'hsl(38,92%,50%)' : 'hsl(160,84%,39%)',
-    dimmed: filterOutliers && m.isOutlier,
+  const records: any[] = incomeData?.records ?? []
+  const avgMonthly: number = incomeData?.avgMonthly ?? 0
+  const avgMonthlyFiltered: number = incomeData?.avgMonthlyFiltered ?? 0
+  const annualRunRate: number = incomeData?.annualRunRate ?? 0
+  const latestMonth: any = incomeData?.latestMonth ?? null
+  const outlierCount: number = incomeData?.outlierCount ?? 0
+
+  const snapshots: any[] = netWorthData?.snapshots ?? []
+
+  const avg = filterOutliers ? avgMonthlyFiltered : avgMonthly
+
+  const chartData = records.map((r) => ({
+    month: r.date.slice(0, 7),
+    amount: r.amount,
+    isOutlier: r.isOutlier,
+    fill: r.isOutlier ? 'hsl(38,92%,50%)' : 'hsl(160,84%,39%)',
+    dimmed: filterOutliers && r.isOutlier,
   }))
+
+  const netWorthChartData = snapshots.map((s) => ({
+    month: s.date.slice(0, 7),
+    assets: s.totalAssets,
+    liabilities: s.totalLiabilities,
+    netWorth: s.netWorth,
+  }))
+
+  const lastMonthAmount = latestMonth?.amount ?? 0
+  const lastMonthVsAvg = avg > 0 ? ((lastMonthAmount - avg) / avg) * 100 : 0
 
   return (
     <div className="p-6 space-y-6 max-w-7xl">
@@ -36,19 +58,19 @@ export function Income() {
         />
         <StatCard
           label="Avg Monthly (all)"
-          value={formatCurrency(avgAll)}
+          value={formatCurrency(avgMonthly)}
           subValue={`${outlierCount} outlier${outlierCount > 1 ? 's' : ''} detected`}
           subValuePositive={false}
         />
         <StatCard
           label="Last Month"
-          value={formatCurrency(monthlyIncome[monthlyIncome.length - 1].amount)}
-          subValue={formatPercent(((monthlyIncome[monthlyIncome.length - 1].amount - avg) / avg) * 100) + ' vs avg'}
-          subValuePositive={monthlyIncome[monthlyIncome.length - 1].amount >= avg}
+          value={formatCurrency(lastMonthAmount)}
+          subValue={formatPercent(lastMonthVsAvg) + ' vs avg'}
+          subValuePositive={lastMonthAmount >= avg}
         />
         <StatCard
           label="Annual Run Rate"
-          value={formatCurrency(avg * 12)}
+          value={formatCurrency(annualRunRate || avg * 12)}
           subValue="Based on avg monthly"
           subValuePositive={true}
         />
@@ -107,8 +129,8 @@ export function Income() {
             style={{ backgroundColor: 'hsl(38,92%,50%,0.1)', border: '1px solid hsl(38,92%,50%,0.3)' }}>
             <AlertCircle size={14} style={{ color: 'hsl(38,92%,50%)' }} className="mt-0.5 shrink-0" />
             <p className="text-xs" style={{ color: 'hsl(var(--foreground))' }}>
-              <strong>Jul 24</strong> was flagged as an outlier ({formatCurrency(22500)}) — likely a bonus or one-time payment.
-              Enable "Filter outliers" to exclude it from your average.
+              {outlierCount} outlier{outlierCount !== 1 ? 's' : ''} detected — likely a bonus or one-time payment.
+              Enable "Filter outliers" to exclude {outlierCount !== 1 ? 'them' : 'it'} from your average.
             </p>
           </div>
         )}
@@ -119,7 +141,7 @@ export function Income() {
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="text-sm font-semibold">Net Worth Over Time</h2>
-            <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>Assets vs liabilities · 24 months</p>
+            <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>Assets vs liabilities · {snapshots.length} months</p>
           </div>
           <div className="flex items-center gap-4 text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
             <span className="flex items-center gap-1.5">
@@ -133,7 +155,7 @@ export function Income() {
           </div>
         </div>
         <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={netWorthHistory} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
+          <LineChart data={netWorthChartData} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
             <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
               tickLine={false} axisLine={false} interval={3} />

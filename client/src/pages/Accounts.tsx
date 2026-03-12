@@ -1,7 +1,8 @@
 import { RefreshCw, Plus, TrendingUp, TrendingDown, Link2, Car, Home } from 'lucide-react'
 import { Card, StatCard } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { accounts, assets, summaryStats } from '@/lib/mock-data'
+import { useApi } from '@/hooks/useApi'
+import { api } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 
 const accountTypeColors: Record<string, string> = {
@@ -23,19 +24,25 @@ const accountTypeLabel: Record<string, string> = {
 }
 
 export function Accounts() {
-  const liquidAssets = accounts.filter((a) => ['checking', 'savings'].includes(a.type))
-    .reduce((s, a) => s + a.balance, 0)
-  const investments = accounts.filter((a) => ['investment', 'retirement'].includes(a.type))
-    .reduce((s, a) => s + a.balance, 0)
-  const liabilities = accounts.filter((a) => a.balance < 0)
-    .reduce((s, a) => s + a.balance, 0)
+  const { data: accountsData } = useApi(() => api.accounts.list())
+  const { data: assetsData } = useApi(() => api.accounts.assets())
+  const { data: netWorthData } = useApi(() => api.accounts.netWorth())
+
+  const accounts: any[] = accountsData?.accounts ?? []
+  const assets: any[] = assetsData?.assets ?? []
+
+  const netWorth: number = netWorthData?.netWorth ?? 0
+  const liquidAssets: number = netWorthData?.liquidAssets ?? 0
+  const investments: number = netWorthData?.investments ?? 0
+  const totalLiabilities: number = netWorthData?.totalLiabilities ?? 0
+
   return (
     <div className="p-6 space-y-6 max-w-7xl">
       {/* Summary */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           label="Net Worth"
-          value={formatCurrency(summaryStats.netWorth)}
+          value={formatCurrency(netWorth)}
           subValue="+$1,420 this month"
           subValuePositive
           accent
@@ -54,7 +61,7 @@ export function Accounts() {
         />
         <StatCard
           label="Total Liabilities"
-          value={formatCurrency(Math.abs(liabilities))}
+          value={formatCurrency(Math.abs(totalLiabilities))}
           subValue="Credit + Loans"
           subValuePositive={false}
         />
@@ -88,7 +95,7 @@ export function Accounts() {
         </div>
 
         <div className="space-y-0">
-          {accounts.map((account, i) => (
+          {accounts.map((account: any, i: number) => (
             <div
               key={account.id}
               className="flex items-center justify-between py-3 text-sm"
@@ -97,16 +104,16 @@ export function Accounts() {
               <div className="flex items-center gap-3">
                 <div
                   className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
-                  style={{ backgroundColor: accountTypeColors[account.type] }}
+                  style={{ backgroundColor: accountTypeColors[account.type] ?? '#6366f1' }}
                 >
-                  {account.institution.slice(0, 2).toUpperCase()}
+                  {(account.institutionName ?? account.institution ?? '??').slice(0, 2).toUpperCase()}
                 </div>
                 <div>
                   <p className="font-medium text-xs">{account.name}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <Badge variant="neutral">{accountTypeLabel[account.type]}</Badge>
+                    <Badge variant="neutral">{accountTypeLabel[account.type] ?? account.type}</Badge>
                     <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                      · synced {account.lastSync}
+                      · synced {account.lastSyncedAt ?? account.lastSync ?? 'recently'}
                     </span>
                   </div>
                 </div>
@@ -114,11 +121,11 @@ export function Accounts() {
               <div className="flex items-center gap-2">
                 <span
                   className="font-semibold text-sm"
-                  style={{ color: account.balance < 0 ? 'hsl(var(--negative))' : 'hsl(var(--foreground))' }}
+                  style={{ color: (account.balanceCurrent ?? account.balance) < 0 ? 'hsl(var(--negative))' : 'hsl(var(--foreground))' }}
                 >
-                  {formatCurrency(account.balance)}
+                  {formatCurrency(account.balanceCurrent ?? account.balance ?? 0)}
                 </span>
-                {account.balance < 0
+                {(account.balanceCurrent ?? account.balance ?? 0) < 0
                   ? <TrendingDown size={14} style={{ color: 'hsl(var(--negative))' }} />
                   : <TrendingUp size={14} style={{ color: 'hsl(var(--positive))' }} />}
               </div>
@@ -140,9 +147,9 @@ export function Accounts() {
           </button>
         </div>
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {assets.map((asset) => {
-            const gain = asset.currentValue - asset.purchaseValue
-            const gainPct = ((gain / asset.purchaseValue) * 100).toFixed(1)
+          {assets.map((asset: any) => {
+            const gain = (asset.currentValue ?? 0) - (asset.purchaseValue ?? 0)
+            const gainPct = asset.purchaseValue > 0 ? ((gain / asset.purchaseValue) * 100).toFixed(1) : '0.0'
             const isDepreciating = asset.type === 'vehicle'
 
             return (
@@ -163,7 +170,7 @@ export function Accounts() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold">{formatCurrency(asset.currentValue)}</p>
+                        <p className="text-sm font-bold">{formatCurrency(asset.currentValue ?? 0)}</p>
                         <p className="text-xs mt-0.5" style={{ color: gain >= 0 ? 'hsl(var(--positive))' : 'hsl(var(--negative))' }}>
                           {gain >= 0 ? '+' : ''}{formatCurrency(gain)} ({gainPct}%)
                         </p>
@@ -173,7 +180,7 @@ export function Accounts() {
                       style={{ borderColor: 'hsl(var(--border))' }}>
                       <div className="text-xs space-y-0.5">
                         <p style={{ color: 'hsl(var(--muted-foreground))' }}>
-                          Purchase price: {formatCurrency(asset.purchaseValue)}
+                          Purchase price: {formatCurrency(asset.purchaseValue ?? 0)}
                         </p>
                         {asset.depreciationRate && (
                           <p style={{ color: 'hsl(var(--muted-foreground))' }}>
@@ -185,7 +192,7 @@ export function Accounts() {
                         {isDepreciating
                           ? <Badge variant="warning">Depreciating</Badge>
                           : <Badge variant="success">Appreciating</Badge>}
-                        <Badge variant="neutral">{asset.source}</Badge>
+                        <Badge variant="neutral">{asset.valuationSource ?? asset.source}</Badge>
                       </div>
                     </div>
                   </div>

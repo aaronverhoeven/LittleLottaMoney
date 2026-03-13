@@ -140,17 +140,18 @@ export const incomeRecords = sqliteTable('income_records', {
 
 // ── Filter Rules ──────────────────────────────────────────────────────────────
 export const filterRules = sqliteTable('filter_rules', {
-  id:           integer('id').primaryKey({ autoIncrement: true }),
-  name:         text('name').notNull(),
-  pattern:      text('pattern').notNull(),
+  id:              integer('id').primaryKey({ autoIncrement: true }),
+  name:            text('name').notNull(),
+  pattern:         text('pattern').notNull(),
   // match_type: keyword | regex | ai
-  matchType:    text('match_type').notNull().default('keyword'),
-  categoryId:   integer('category_id').references(() => categories.id),
-  bucketId:     integer('bucket_id').references(() => budgetBuckets.id),
-  priority:     integer('priority').notNull().default(0),
-  isActive:     integer('is_active', { mode: 'boolean' }).notNull().default(true),
-  matchedCount: integer('matched_count').notNull().default(0),
-  createdAt:    text('created_at').notNull().default(sql`(datetime('now'))`),
+  matchType:       text('match_type').notNull().default('keyword'),
+  categoryId:      integer('category_id').references(() => categories.id),
+  bucketId:        integer('bucket_id').references(() => budgetBuckets.id),
+  priority:        integer('priority').notNull().default(0),
+  isActive:        integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  matchedCount:    integer('matched_count').notNull().default(0),
+  naturalLanguage: text('natural_language'),
+  createdAt:       text('created_at').notNull().default(sql`(datetime('now'))`),
 })
 
 // ── Physical Assets ───────────────────────────────────────────────────────────
@@ -192,6 +193,23 @@ export const aiSettings = sqliteTable('ai_settings', {
   updatedAt:text('updated_at').notNull().default(sql`(datetime('now'))`),
 })
 
+// ── Corrections (user category overrides) ─────────────────────────────────────
+export const corrections = sqliteTable('corrections', {
+  id:             integer('id').primaryKey({ autoIncrement: true }),
+  transactionId:  integer('transaction_id').notNull(),
+  merchantName:   text('merchant_name'),
+  fromCategoryId: integer('from_category_id'),
+  toCategoryId:   integer('to_category_id').notNull(),
+  createdAt:      text('created_at').notNull().default(sql`(datetime('now'))`),
+})
+
+// ── Settings (key/value store) ────────────────────────────────────────────────
+export const settings = sqliteTable('settings', {
+  key:       text('key').primaryKey(),
+  value:     text('value').notNull(),
+  updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
+})
+
 // ── Type exports ──────────────────────────────────────────────────────────────
 export type Profile           = typeof profile.$inferSelect
 export type PlaidItem         = typeof plaidItems.$inferSelect
@@ -206,3 +224,5 @@ export type FilterRule        = typeof filterRules.$inferSelect
 export type Asset             = typeof assets.$inferSelect
 export type NetWorthSnapshot  = typeof netWorthSnapshots.$inferSelect
 export type AiSettings        = typeof aiSettings.$inferSelect
+export type Correction        = typeof corrections.$inferSelect
+export type Setting           = typeof settings.$inferSelect

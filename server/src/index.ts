@@ -11,6 +11,7 @@ import { budgetRouter }      from './routes/budget.js'
 import { goalsRouter }       from './routes/goals.js'
 import { incomeRouter }      from './routes/income.js'
 import { filtersRouter }     from './routes/filters.js'
+import { settingsRouter }    from './routes/settings.js'
 import { toolDefinitions, callTool } from './mcp/tools.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -33,6 +34,7 @@ app.use('/api/budget',       budgetRouter)
 app.use('/api/goals',        goalsRouter)
 app.use('/api/income',       incomeRouter)
 app.use('/api/filters',      filtersRouter)
+app.use('/api/settings',     settingsRouter)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', version: '0.1.0', name: 'Little Lotta Money' })

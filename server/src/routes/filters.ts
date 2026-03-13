@@ -98,7 +98,7 @@ filtersRouter.post('/test', (req, res) => {
 })
 
 // ── Apply all rules to uncategorized transactions ─────────────────────────────
-filtersRouter.post('/apply', (_req, res) => {
+filtersRouter.post('/apply', async (_req, res) => {
   const uncategorized = db.select().from(transactions)
     .where(eq(transactions.categoryId, null as any))
     .all()
@@ -106,7 +106,7 @@ filtersRouter.post('/apply', (_req, res) => {
   let applied = 0
   for (const tx of uncategorized) {
     const merchant = tx.merchantName ?? tx.originalDescription ?? ''
-    const result   = applyRules(merchant)
+    const result   = await applyRules(merchant, tx.originalDescription ?? undefined)
     if (result.categoryId) {
       db.update(transactions)
         .set({ categoryId: result.categoryId, updatedAt: new Date().toISOString() })

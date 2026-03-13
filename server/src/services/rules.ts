@@ -1,6 +1,7 @@
-import { db } from '../db/index.js'
+import { db, sqlite } from '../db/index.js'
 import { filterRules, transactions, categories } from '../db/schema.js'
 import { eq, desc } from 'drizzle-orm'
+import { categorizeMerchant } from './ai.js'
 
 interface RuleMatch {
   categoryId: number | null
@@ -11,9 +12,13 @@ interface RuleMatch {
 
 /**
  * Apply active filter rules to a merchant name.
- * Rules are tested in priority order (desc). First match wins.
+ * Rules are tested in priority order (desc). First keyword/regex match wins.
+ * If no match found and AI is enabled, falls back to AI categorization.
  */
-export function applyRules(merchantName: string): RuleMatch {
+export async function applyRules(
+  merchantName: string,
+  originalDescription?: string
+): Promise<RuleMatch> {
   const rules = db.select().from(filterRules)
     .where(eq(filterRules.isActive, true))
     .all()
@@ -22,6 +27,8 @@ export function applyRules(merchantName: string): RuleMatch {
   const name = merchantName.toLowerCase()
 
   for (const rule of rules) {
+    if (rule.matchType === 'ai') continue  // AI rules handled below
+
     let matched = false
     if (rule.matchType === 'keyword') {
       matched = name.includes(rule.pattern.toLowerCase())
@@ -32,7 +39,6 @@ export function applyRules(merchantName: string): RuleMatch {
         // Invalid regex — skip
       }
     }
-    // 'ai' type rules need an external call; skipped here (handled via AI route)
 
     if (matched) {
       return {
@@ -41,6 +47,27 @@ export function applyRules(merchantName: string): RuleMatch {
         ruleId:     rule.id,
         confidence: 1.0,
       }
+    }
+  }
+
+  // No keyword/regex match — try AI categorization
+  const allCategories = db.select({ id: categories.id, name: categories.name }).from(categories).all()
+  const aiRules = rules.filter((r) => r.matchType === 'ai')
+
+  const aiResult = await categorizeMerchant(
+    sqlite,
+    merchantName,
+    originalDescription,
+    allCategories,
+    aiRules.map((r) => ({ name: r.name, naturalLanguage: r.naturalLanguage }))
+  )
+
+  if (aiResult.categoryId) {
+    return {
+      categoryId: aiResult.categoryId,
+      bucketId:   null,
+      ruleId:     null,
+      confidence: aiResult.confidence,
     }
   }
 

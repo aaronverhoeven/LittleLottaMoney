@@ -9,14 +9,18 @@ import { Accounts } from '@/pages/Accounts'
 import { Filters } from '@/pages/Filters'
 import { AI } from '@/pages/AI'
 import { Profile } from '@/pages/Profile'
+import { Transactions } from '@/pages/Transactions'
+import { Settings } from '@/pages/Settings'
 
 const pageMeta: Record<string, { title: string; subtitle?: string }> = {
   '/': { title: 'Dashboard', subtitle: 'March 2025' },
   '/income': { title: 'Income', subtitle: 'Earnings, trends & net worth' },
   '/budget': { title: 'Budget', subtitle: 'Envelopes & goals' },
   '/accounts': { title: 'Accounts', subtitle: 'Assets, liabilities & linked accounts' },
+  '/transactions': { title: 'Transactions', subtitle: 'Browse & categorize transactions' },
   '/filters': { title: 'Filters', subtitle: 'Auto-classification rules' },
   '/ai': { title: 'AI', subtitle: 'Financial insights & chat' },
+  '/settings': { title: 'Settings', subtitle: 'AI categorization & preferences' },
   '/profile': { title: 'Profile', subtitle: 'Settings & preferences' },
 }
 
@@ -47,8 +51,10 @@ function AppShell() {
             <Route path="/income" element={<Income />} />
             <Route path="/budget" element={<Budget />} />
             <Route path="/accounts" element={<Accounts />} />
+            <Route path="/transactions" element={<Transactions />} />
             <Route path="/filters" element={<Filters />} />
             <Route path="/ai" element={<AI />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/profile" element={<Profile darkMode={darkMode} onToggleDark={toggleDark} />} />
           </Routes>
         </main>

@@ -9,6 +9,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Coins,
+  ArrowLeftRight,
+  Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -17,8 +19,10 @@ const navItems = [
   { to: '/income', label: 'Income', icon: TrendingUp },
   { to: '/budget', label: 'Budget', icon: Wallet },
   { to: '/accounts', label: 'Accounts', icon: Building2 },
+  { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
   { to: '/filters', label: 'Filters', icon: Filter },
   { to: '/ai', label: 'AI', icon: Bot },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
 interface SidebarProps {

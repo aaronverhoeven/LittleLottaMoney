@@ -77,6 +77,8 @@ export const api = {
       const qs = year ? `?year=${year}&month=${month}` : ''
       return get<any>(`/transactions/summary/monthly${qs}`)
     },
+    correct:       (id: number, categoryId: number) =>
+      patch<any>(`/transactions/${id}/correct`, { categoryId }),
   },
 
   budget: {
@@ -115,5 +117,14 @@ export const api = {
     test:          (data: any) => post<any>('/filters/test', data),
     apply:         () => post<any>('/filters/apply'),
     suggestions:   () => get<any>('/filters/suggestions'),
+  },
+
+  settings: {
+    ai: {
+      get:  () => get<any>('/settings/ai'),
+      set:  (data: { endpoint?: string; model?: string; enabled?: boolean }) =>
+        put<any>('/settings/ai', data),
+      test: () => post<any>('/settings/ai/test'),
+    },
   },
 }

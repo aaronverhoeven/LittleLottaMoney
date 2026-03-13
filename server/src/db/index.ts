@@ -199,6 +199,28 @@ export function migrate() {
       endpoint TEXT DEFAULT 'http://localhost:1234/v1',
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS corrections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      transaction_id INTEGER NOT NULL,
+      merchant_name TEXT,
+      from_category_id INTEGER,
+      to_category_id INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `)
+
+  // Add natural_language column to filter_rules if it doesn't exist yet
+  const cols = sqlite.prepare("PRAGMA table_info(filter_rules)").all() as Array<{ name: string }>
+  if (!cols.some((c) => c.name === 'natural_language')) {
+    sqlite.exec("ALTER TABLE filter_rules ADD COLUMN natural_language TEXT")
+  }
+
   console.log(`  ✓ Database ready at ${dbPath}`)
 }
